@@ -11,6 +11,7 @@ import platform
 HOME_DIR = os.environ.get('HOME', '')
 GO_BIN_PATH = os.path.join(HOME_DIR, 'go', 'bin')
 GO_ROOT_BIN = '/usr/local/go/bin'
+
 for _p in (GO_BIN_PATH, GO_ROOT_BIN):
     if _p not in os.environ.get('PATH', ''):
         os.environ['PATH'] = f"{os.environ.get('PATH', '')}:{_p}"
@@ -39,19 +40,16 @@ def _rodar(cmd):
     return resultado.returncode == 0
 
 def garantir_go_instalado():
-    """Verifica se o Go está instalado e, se não estiver, tenta instalar automaticamente."""
     if shutil.which("go"):
-        print("[+] Go já está instalado.")
+        print("[+] Go ja esta instalado.")
         return True
 
-    print("[!] Go não encontrado no sistema. Tentando instalar automaticamente...")
-
+    print("[!] Go nao encontrado no sistema. Tentando instalar automaticamente...")
     sistema = platform.system().lower()
     arquitetura = platform.machine().lower()
 
     if sistema != "linux":
-        print("[!] Instalação automática do Go só é suportada em Linux.")
-        print("    Instale manualmente em: https://go.dev/dl/")
+        print("[!] Instalacao automatica do Go so e suportada em Linux.")
         return False
 
     mapa_arch = {
@@ -62,8 +60,7 @@ def garantir_go_instalado():
     }
     go_arch = mapa_arch.get(arquitetura)
     if not go_arch:
-        print(f"[!] Arquitetura '{arquitetura}' não mapeada automaticamente.")
-        print("    Instale manualmente em: https://go.dev/dl/")
+        print(f"[!] Arquitetura '{arquitetura}' nao mapeada automaticamente.")
         return False
 
     tarball = f"go{GO_VERSION}.linux-{go_arch}.tar.gz"
@@ -74,16 +71,15 @@ def garantir_go_instalado():
         f"sudo rm -rf /usr/local/go",
         f"sudo tar -C /usr/local -xzf /tmp/{tarball}",
     ]
+    
     for passo in passos:
         if not _rodar(passo):
             print("[!] Falha ao instalar o Go automaticamente.")
-            print("    Tente manualmente: https://go.dev/dl/")
             return False
 
     if GO_ROOT_BIN not in os.environ.get('PATH', ''):
         os.environ['PATH'] = f"{os.environ.get('PATH', '')}:{GO_ROOT_BIN}"
 
-    # Persiste no PATH do usuário para próximas sessões de shell
     bashrc = os.path.join(HOME_DIR, ".bashrc")
     linha_path = f'export PATH=$PATH:{GO_ROOT_BIN}:{GO_BIN_PATH}\n'
     try:
@@ -94,27 +90,27 @@ def garantir_go_instalado():
         if linha_path.strip() not in conteudo_atual:
             with open(bashrc, "a") as f:
                 f.write(f"\n# Adicionado por recon-ai.py\n{linha_path}")
-            print(f"[+] PATH do Go adicionado em {bashrc} (abra um novo terminal ou rode 'source ~/.bashrc').")
+            print(f"[+] PATH do Go adicionado em {bashrc}")
     except Exception as e:
-        print(f"[!] Não foi possível atualizar {bashrc} automaticamente: {e}")
+        print(f"[!] Nao foi possivel atualizar {bashrc} automaticamente: {e}")
 
     if shutil.which("go"):
         print("[+] Go instalado com sucesso.")
         return True
     else:
-        print("[!] Go foi baixado, mas ainda não está no PATH desta sessão.")
-        print(f"    Rode: export PATH=$PATH:{GO_ROOT_BIN}:{GO_BIN_PATH}")
+        print("[!] Go foi baixado, mas ainda nao esta no PATH desta sessao.")
         return False
 
 def instalar_dependencias():
     go_ok = garantir_go_instalado()
 
     comandos = [
-        # --break-system-packages evita o erro "externally-managed-environment" (PEP 668)
         "pip install --break-system-packages google-generativeai openai arjun",
     ]
 
     if go_ok:
+        print("\n[!!!] AVISO: A compilacao das ferramentas em Go leva de 5 a 10 minutos.")
+        print("[!!!] POR FAVOR, NAO CANCELE O PROCESSO (Nao aperte Ctrl+C). Aguarde...\n")
         comandos += [
             "go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest",
             "go install -v github.com/tomnomnom/assetfinder@latest",
@@ -125,7 +121,7 @@ def instalar_dependencias():
             "go install -v github.com/hahwul/dalfox/v2@latest",
         ]
     else:
-        print("[!] Pulando instalação das ferramentas Go pois o Go não está disponível.")
+        print("[!] Pulando instalacao das ferramentas Go pois o Go nao esta disponivel.")
 
     comandos += [
         "sudo apt update && sudo apt install -y ffuf",
@@ -138,13 +134,12 @@ def instalar_dependencias():
 
     print("\n[+] Instalacao concluida.")
 
-    faltantes = [f for f in ["subfinder", "assetfinder", "httpx", "katana", "gau", "nuclei", "dalfox", "arjun", "ffuf"] if not shutil.which(f)]
+    faltantes = [f for f in ["subfinder", "assetfinder", "httpx", "katana", "gau", "nuclei", "dalfox", "arjun"] if not shutil.which(f)]
     if faltantes:
         print(f"[!] Ainda faltando no PATH: {', '.join(faltantes)}")
-        print("    Se acabou de instalar o Go agora, rode: source ~/.bashrc")
-        print("    E rode novamente: python3 recon-ai.py --setup")
+        print("    Se acabou de instalar o Go agora, feche este terminal, abra outro e rode --setup de novo.")
     else:
-        print("[+] Todas as ferramentas foram encontradas no PATH.")
+        print("[+] Todas as ferramentas foram encontradas no PATH. Sistema pronto!")
 
 def salvar_api(provedor, chave):
     config = {}
@@ -167,10 +162,9 @@ def checar_dependencias():
     faltantes = [f for f in ferramentas if not shutil.which(f)]
     if faltantes:
         print(f"[!] Ferramentas faltando no PATH: {', '.join(faltantes)}")
-        print("[!] Rode 'python3 recon-ai.py --setup' primeiro.")
+        print("[!] Rode 'python3 reconai.py --setup' primeiro.")
         if not shutil.which("go"):
-            print("[!] Detectado: o Go não está instalado, por isso as ferramentas Go acima não puderam ser compiladas.")
-        print()
+            print("[!] Detectado: o Go nao esta instalado.")
         sys.exit(1)
 
 def executar_comando(comando, arquivo_log=None, monitorar_429=False, limite_429=5, pausa_waf=120):
@@ -180,11 +174,13 @@ def executar_comando(comando, arquivo_log=None, monitorar_429=False, limite_429=
     )
     contador_429 = 0
     saida_completa = []
+    
     for linha in processo.stdout:
         linha_limpa = linha.strip()
         if not linha_limpa:
             continue
         saida_completa.append(linha_limpa)
+        
         if monitorar_429:
             try:
                 dados = json.loads(linha_limpa)
@@ -194,11 +190,12 @@ def executar_comando(comando, arquivo_log=None, monitorar_429=False, limite_429=
                     print(f"\n[!] WAF detectado. Pausando por {pausa_waf}s...")
                     os.kill(processo.pid, signal.SIGSTOP)
                     time.sleep(pausa_waf)
-                    print("[*] Retomando execução...")
+                    print("[*] Retomando execucao...")
                     os.kill(processo.pid, signal.SIGCONT)
                     contador_429 = 0
             except json.JSONDecodeError:
                 pass
+                
     processo.wait()
     if arquivo_log and saida_completa:
         with open(arquivo_log, "w", encoding="utf-8") as f:
@@ -206,21 +203,24 @@ def executar_comando(comando, arquivo_log=None, monitorar_429=False, limite_429=
     return saida_completa
 
 def fase_1_subdominios(alvo, pasta):
-    print("\n[+] FASE 1: Enumeração de Subdomínios")
+    print("\n[+] FASE 1: Enumeracao de Subdominios")
     subfinder_out = os.path.join(pasta, "subfinder.txt")
     assetfinder_out = os.path.join(pasta, "assetfinder.txt")
     sub_finais = os.path.join(pasta, "subdominios.txt")
+    
     executar_comando(["subfinder", "-d", alvo, "-silent", "-o", subfinder_out])
     executar_comando(["assetfinder", "--subs-only", alvo], arquivo_log=assetfinder_out)
+    
     subs = set()
     for arq in [subfinder_out, assetfinder_out]:
         if os.path.exists(arq):
-            with open(arq, "r") as f:
+            with open(arq, "r", encoding="utf-8", errors="ignore") as f:
                 for linha in f:
                     s = linha.strip().lower()
                     if s and alvo in s:
                         subs.add(s)
-    with open(sub_finais, "w") as f:
+                        
+    with open(sub_finais, "w", encoding="utf-8") as f:
         f.write("\n".join(sorted(subs)))
     return sub_finais
 
@@ -228,13 +228,15 @@ def fase_2_web_probing(arquivo_subdominios, pasta):
     print("\n[+] FASE 2: Sondagem Web (Httpx)")
     httpx_json = os.path.join(pasta, "httpx.json")
     urls_txt = os.path.join(pasta, "urls_vivas.txt")
+    
     executar_comando([
         "httpx", "-l", arquivo_subdominios, "-ports", "80,443,8080,8443",
         "-threads", "30", "-rate-limit", "50", "-json", "-o", httpx_json, "-silent"
     ], monitorar_429=True)
+    
     urls = []
     if os.path.exists(httpx_json):
-        with open(httpx_json, "r") as f:
+        with open(httpx_json, "r", encoding="utf-8", errors="ignore") as f:
             for l in f:
                 try:
                     d = json.loads(l)
@@ -242,7 +244,8 @@ def fase_2_web_probing(arquivo_subdominios, pasta):
                         urls.append(d["url"])
                 except:
                     pass
-    with open(urls_txt, "w") as f:
+                    
+    with open(urls_txt, "w", encoding="utf-8") as f:
         f.write("\n".join(urls))
     return urls_txt
 
@@ -251,18 +254,21 @@ def fase_3_crawling(arquivo_urls, alvo, pasta):
     katana_out = os.path.join(pasta, "katana.txt")
     gau_out = os.path.join(pasta, "gau.txt")
     endpoints_txt = os.path.join(pasta, "endpoints.txt")
+    
     executar_comando(["katana", "-list", arquivo_urls, "-depth", "3", "-silent", "-o", katana_out])
     executar_comando(["gau", alvo, "--threads", "10", "-o", gau_out])
+    
     urls_filtradas = set()
     ignorar = ('.png', '.jpg', '.css', '.woff', '.ico', '.svg', '.gif')
     for arq in [katana_out, gau_out]:
         if os.path.exists(arq):
-            with open(arq, "r") as f:
+            with open(arq, "r", encoding="utf-8", errors="ignore") as f:
                 for l in f:
                     u = l.strip()
                     if u and not u.lower().endswith(ignorar):
                         urls_filtradas.add(u)
-    with open(endpoints_txt, "w") as f:
+                        
+    with open(endpoints_txt, "w", encoding="utf-8") as f:
         f.write("\n".join(sorted(urls_filtradas)))
     return endpoints_txt
 
@@ -270,12 +276,13 @@ def fase_4_fuzzing(arquivo_urls, pasta):
     print("\n[+] FASE 4: Parameter Discovery (Arjun)")
     urls_amostra = []
     if os.path.exists(arquivo_urls):
-        with open(arquivo_urls, "r") as f:
+        with open(arquivo_urls, "r", encoding="utf-8", errors="ignore") as f:
             urls_amostra = [linha.strip() for linha in f.readlines()[:10]]
+            
     arjun_out = os.path.join(pasta, "arjun.json")
     if urls_amostra:
         amostra_txt = os.path.join(pasta, "arjun_targets.txt")
-        with open(amostra_txt, "w") as f:
+        with open(amostra_txt, "w", encoding="utf-8") as f:
             f.write("\n".join(urls_amostra))
         executar_comando(["arjun", "-i", amostra_txt, "-t", "5", "--rate-limit", "20", "-oJ", arjun_out])
     return arjun_out
@@ -284,19 +291,22 @@ def fase_5_scanning(arquivo_urls, arquivo_endpoints, pasta):
     print("\n[+] FASE 5: Varredura (Nuclei + Dalfox)")
     nuclei_json = os.path.join(pasta, "nuclei.json")
     dalfox_out = os.path.join(pasta, "dalfox.txt")
+    
     executar_comando([
         "nuclei", "-list", arquivo_urls, "-rate-limit", "30", "-delay", "1",
         "-random-agent", "-tags", "cve,misconfig,takeover,sqli",
         "-severity", "medium,high,critical", "-json-export", nuclei_json, "-silent"
     ], monitorar_429=True)
+    
     endpoints_params = os.path.join(pasta, "endpoints_params.txt")
     total_params = 0
     if os.path.exists(arquivo_endpoints):
-        with open(arquivo_endpoints, "r") as fin, open(endpoints_params, "w") as fout:
+        with open(arquivo_endpoints, "r", encoding="utf-8", errors="ignore") as fin, open(endpoints_params, "w", encoding="utf-8") as fout:
             for linha in fin:
                 if "?" in linha and "=" in linha:
                     fout.write(linha)
                     total_params += 1
+                    
     if total_params > 0:
         executar_comando([
             "dalfox", "file", endpoints_params, "--silence", "--skip-bav",
@@ -308,11 +318,13 @@ def fase_6_ia(provedor, nuclei_json, dalfox_out, arjun_json):
     print("\n[+] FASE 6: Triagem com IA")
     chave = carregar_api(provedor)
     if not chave:
-        print(f"[!] Chave da API {provedor} nao encontrada. Use --set-api.")
+        print(f"[!] Chave da API {provedor} nao encontrada. Use --set-api antes de rodar o scan.")
         sys.exit(1)
+        
     consolidado = {"nuclei": [], "dalfox": [], "arjun": {}}
+    
     if os.path.exists(nuclei_json):
-        with open(nuclei_json, "r") as f:
+        with open(nuclei_json, "r", encoding="utf-8", errors="ignore") as f:
             for l in f:
                 try:
                     d = json.loads(l)
@@ -323,20 +335,25 @@ def fase_6_ia(provedor, nuclei_json, dalfox_out, arjun_json):
                     })
                 except:
                     pass
+                    
     if os.path.exists(dalfox_out):
-        with open(dalfox_out, "r") as f:
+        with open(dalfox_out, "r", encoding="utf-8", errors="ignore") as f:
             consolidado["dalfox"] = [l.strip() for l in f if l.strip()]
+            
     if os.path.exists(arjun_json):
         try:
-            with open(arjun_json, "r") as f:
+            with open(arjun_json, "r", encoding="utf-8", errors="ignore") as f:
                 consolidado["arjun"] = json.load(f)
         except:
             pass
+            
     if not consolidado["nuclei"] and not consolidado["dalfox"]:
         print("[*] Nenhuma falha detectada pelas ferramentas.")
         return
+        
     prompt = f"Você é um Bug Hunter Sênior. Descarte falsos positivos e liste apenas vulnerabilidades reais formatadas para o terminal, incluindo alvo, impacto e comando de validação manual. Dados:\n{json.dumps(consolidado)}"
     print(f"[*] Solicitando analise ao modelo {provedor.upper()}...\n")
+    
     if provedor == "gemini":
         import google.generativeai as genai
         genai.configure(api_key=chave)
@@ -354,11 +371,11 @@ def fase_6_ia(provedor, nuclei_json, dalfox_out, arjun_json):
         print(resposta.choices[0].message.content)
 
 def main():
-    parser = argparse.ArgumentParser(description="RECON-AI - Automação de Pentest Web")
-    parser.add_argument("--setup", action="store_true", help="Instala todas as dependências do sistema")
+    parser = argparse.ArgumentParser(description="RECON-AI - Automacao de Pentest Web")
+    parser.add_argument("--setup", action="store_true", help="Instala todas as dependencias do sistema")
     parser.add_argument("--set-api", nargs=2, metavar=('PROVEDOR', 'CHAVE'), help="Salva a chave de API (ex: gemini, openai, deepseek)")
-    parser.add_argument("--target", type=str, help="O domínio alvo para executar o pentest")
-    parser.add_argument("--ai", type=str, choices=['gemini', 'openai', 'deepseek'], help="Escolha qual modelo de IA fará a triagem")
+    parser.add_argument("--target", type=str, help="O dominio alvo para executar o pentest")
+    parser.add_argument("--ai", type=str, choices=['gemini', 'openai', 'deepseek'], help="Escolha qual modelo de IA fara a triagem")
     args = parser.parse_args()
 
     if args.setup:
@@ -375,8 +392,10 @@ def main():
         pasta_saida = f"out_{args.target.replace('.', '_')}"
         os.makedirs(pasta_saida, exist_ok=True)
         print(f"[*] Iniciando pipeline contra o alvo: {args.target}")
+        
         subs = fase_1_subdominios(args.target, pasta_saida)
         urls = fase_2_web_probing(subs, pasta_saida)
+        
         if os.path.exists(urls) and os.stat(urls).st_size > 0:
             endpoints = fase_3_crawling(urls, args.target, pasta_saida)
             arjun = fase_4_fuzzing(urls, pasta_saida)
