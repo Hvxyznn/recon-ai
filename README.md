@@ -1,4 +1,4 @@
-Markdown# RECON-AI 🤖
+Markdown# RECON-AI 
 
 **RECON-AI** é um pipeline automatizado de reconhecimento que transforma o output caótico de ferramentas de Web Pentest em relatórios acionáveis usando Inteligência Artificial. Ele orquestra as melhores ferramentas de Bug Bounty e fornece uma triagem limpa, sem falsos positivos, direto no seu terminal.
 
@@ -62,4 +62,4 @@ python3 recon-ai.py --target site.com --ai deepseek
 
 # Ver painel de ajuda e argumentos disponíveis
 python3 recon-ai.py -h
-📝 ResumoRECON-AI = Enumeração Massiva → Sondagem Web → Varredura (CVE/XSS) → Triagem com IA → Relatório LimpoDesenvolvido por Hvx. Transforme o caos do reconhecimento em inteligência acionável! 🚀
+📝 Resumo RECON-AI = Enumeração Massiva → Sondagem Web → Varredura (CVE/XSS) → Triagem com IA → Relatório LimpoDesenvolvido por Hvx. Transforme o caos do reconhecimento em inteligência acionável! 🚀
