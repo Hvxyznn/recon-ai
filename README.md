@@ -22,7 +22,7 @@
 ```bash
 # Baixar repositório
 git clone https://github.com/Hvxyznn/recon-ai.git
-cd recon-ai
+cd reconai
 
 python3 -m venv venv
 source venv/bin/activate
@@ -31,7 +31,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # Configurar ambiente (Instala Subfinder, Nuclei, Httpx, etc)
-python3 recon-ai.py --setup
+python3 reconai.py --setup
 ```
 
 ---
@@ -42,13 +42,13 @@ python3 recon-ai.py --setup
 
 ```bash
 # Configurar Google Gemini (Recomendado)
-python3 recon-ai.py --set-api gemini SUA_CHAVE_AQUI
+python3 reconai.py --set-api gemini SUA_CHAVE_AQUI
 
 # Configurar OpenAI
-python3 recon-ai.py --set-api openai SUA_CHAVE_AQUI
+python3 reconai.py --set-api openai SUA_CHAVE_AQUI
 
 # Configurar DeepSeek
-python3 recon-ai.py --set-api deepseek SUA_CHAVE_AQUI
+python3 reconai.py --set-api deepseek SUA_CHAVE_AQUI
 ```
 
 ---
@@ -57,7 +57,7 @@ python3 recon-ai.py --set-api deepseek SUA_CHAVE_AQUI
 
 ```bash
 # Iniciar pipeline contra o alvo
-python3 recon-ai.py --target example.com --ai gemini
+python3 reconai.py --target example.com --ai gemini
 ```
 
 **Resposta (relatório limpo no terminal):**
@@ -117,13 +117,13 @@ curl -I https://admin.example.com
 
 ```bash
 # Instalar todas as ferramentas e dependências
-python3 recon-ai.py --setup
+python3 reconai.py --setup
 
 # Rodar scan usando modelo DeepSeek
-python3 recon-ai.py --target site.com --ai deepseek
+python3 reconai.py --target site.com --ai deepseek
 
 # Ver painel de ajuda e argumentos disponíveis
-python3 recon-ai.py -h
+python3 reconai.py -h
 ```
 
 ---
