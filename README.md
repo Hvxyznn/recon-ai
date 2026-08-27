@@ -1,4 +1,4 @@
-Markdown# RECON-AI 
+RECON-AI 
 
 **RECON-AI** é um pipeline automatizado de reconhecimento que transforma o output caótico de ferramentas de Web Pentest em relatórios acionáveis usando Inteligência Artificial. Ele orquestra as melhores ferramentas de Bug Bounty e fornece uma triagem limpa, sem falsos positivos, direto no seu terminal.
 
