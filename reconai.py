@@ -7,6 +7,11 @@ import signal
 import argparse
 import shutil
 
+HOME_DIR = os.environ.get('HOME', '')
+GO_BIN_PATH = os.path.join(HOME_DIR, 'go', 'bin')
+if GO_BIN_PATH not in os.environ.get('PATH', ''):
+    os.environ['PATH'] = f"{os.environ.get('PATH', '')}:{GO_BIN_PATH}"
+
 def exibir_banner():
     banner = r"""
  ██████╗ ███████╗██████╗ ██████╗ ███╗   ██╗       █████╗ ██╗
@@ -176,13 +181,11 @@ def fase_5_scanning(arquivo_urls, arquivo_endpoints, pasta):
     print("\n[+] FASE 5: Varredura (Nuclei + Dalfox)")
     nuclei_json = os.path.join(pasta, "nuclei.json")
     dalfox_out = os.path.join(pasta, "dalfox.txt")
-    
     executar_comando([
         "nuclei", "-list", arquivo_urls, "-rate-limit", "30", "-delay", "1",
         "-random-agent", "-tags", "cve,misconfig,takeover,sqli", 
         "-severity", "medium,high,critical", "-json-export", nuclei_json, "-silent"
     ], monitorar_429=True)
-    
     endpoints_params = os.path.join(pasta, "endpoints_params.txt")
     total_params = 0
     if os.path.exists(arquivo_endpoints):
@@ -204,7 +207,6 @@ def fase_6_ia(provedor, nuclei_json, dalfox_out, arjun_json):
     if not chave:
         print(f"[!] Chave da API {provedor} nao encontrada. Use --set-api.")
         sys.exit(1)
-        
     consolidado = {"nuclei": [], "dalfox": [], "arjun": {}}
     if os.path.exists(nuclei_json):
         with open(nuclei_json, "r") as f:
@@ -227,14 +229,11 @@ def fase_6_ia(provedor, nuclei_json, dalfox_out, arjun_json):
                 consolidado["arjun"] = json.load(f)
         except:
             pass
-
     if not consolidado["nuclei"] and not consolidado["dalfox"]:
         print("[*] Nenhuma falha detectada pelas ferramentas.")
         return
-
     prompt = f"Você é um Bug Hunter Sênior. Descarte falsos positivos e liste apenas vulnerabilidades reais formatadas para o terminal, incluindo alvo, impacto e comando de validação manual. Dados:\n{json.dumps(consolidado)}"
     print(f"[*] Solicitando analise ao modelo {provedor.upper()}...\n")
-    
     if provedor == "gemini":
         import google.generativeai as genai
         genai.configure(api_key=chave)
@@ -270,14 +269,11 @@ def main():
     if args.target and args.ai:
         exibir_banner()
         checar_dependencias()
-        
         pasta_saida = f"out_{args.target.replace('.', '_')}"
         os.makedirs(pasta_saida, exist_ok=True)
         print(f"[*] Iniciando pipeline contra o alvo: {args.target}")
-        
         subs = fase_1_subdominios(args.target, pasta_saida)
         urls = fase_2_web_probing(subs, pasta_saida)
-        
         if os.path.exists(urls) and os.stat(urls).st_size > 0:
             endpoints = fase_3_crawling(urls, args.target, pasta_saida)
             arjun = fase_4_fuzzing(urls, pasta_saida)
