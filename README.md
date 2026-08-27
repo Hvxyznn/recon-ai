@@ -22,7 +22,7 @@
 ```bash
 # Baixar repositório
 git clone https://github.com/Hvxyznn/recon-ai.git
-cd reconai
+cd recon-ai
 
 python3 -m venv venv
 source venv/bin/activate
