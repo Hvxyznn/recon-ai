@@ -6,11 +6,16 @@ import time
 import signal
 import argparse
 import shutil
+import platform
 
 HOME_DIR = os.environ.get('HOME', '')
 GO_BIN_PATH = os.path.join(HOME_DIR, 'go', 'bin')
-if GO_BIN_PATH not in os.environ.get('PATH', ''):
-    os.environ['PATH'] = f"{os.environ.get('PATH', '')}:{GO_BIN_PATH}"
+GO_ROOT_BIN = '/usr/local/go/bin'
+for _p in (GO_BIN_PATH, GO_ROOT_BIN):
+    if _p not in os.environ.get('PATH', ''):
+        os.environ['PATH'] = f"{os.environ.get('PATH', '')}:{_p}"
+
+GO_VERSION = "1.23.4"
 
 def exibir_banner():
     banner = r"""
@@ -20,31 +25,126 @@ def exibir_banner():
  ██╔══██╗██╔══╝  ██║     ██║   ██║██║╚██╗██║╚════╝██╔══██║██║
  ██║  ██║███████╗╚██████╗╚██████╔╝██║ ╚████║      ██║  ██║██║
  ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝      ╚═╝  ╚═╝╚═╝
-                                                             
+
  An automated web penetration testing and bug bounty reconnaissance pipeline.
  Powered by AI for intelligent triage and false-positive reduction.
- 
+
  Developed by Hvx
     """
     print(banner)
 
-def instalar_dependencias():
-    comandos = [
-        "pip install google-generativeai openai arjun",
-        "go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest",
-        "go install -v github.com/tomnomnom/assetfinder@latest",
-        "go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest",
-        "go install -v github.com/projectdiscovery/katana/cmd/katana@latest",
-        "go install -v github.com/lc/gau/v2/cmd/gau@latest",
-        "go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest",
-        "go install -v github.com/hahwul/dalfox/v2@latest",
-        "sudo apt update && sudo apt install -y ffuf",
-        "nuclei -update-templates"
+def _rodar(cmd):
+    print(f"\n[*] Executando: {cmd}")
+    resultado = subprocess.run(cmd, shell=True)
+    return resultado.returncode == 0
+
+def garantir_go_instalado():
+    """Verifica se o Go está instalado e, se não estiver, tenta instalar automaticamente."""
+    if shutil.which("go"):
+        print("[+] Go já está instalado.")
+        return True
+
+    print("[!] Go não encontrado no sistema. Tentando instalar automaticamente...")
+
+    sistema = platform.system().lower()
+    arquitetura = platform.machine().lower()
+
+    if sistema != "linux":
+        print("[!] Instalação automática do Go só é suportada em Linux.")
+        print("    Instale manualmente em: https://go.dev/dl/")
+        return False
+
+    mapa_arch = {
+        "x86_64": "amd64",
+        "amd64": "amd64",
+        "aarch64": "arm64",
+        "arm64": "arm64",
+    }
+    go_arch = mapa_arch.get(arquitetura)
+    if not go_arch:
+        print(f"[!] Arquitetura '{arquitetura}' não mapeada automaticamente.")
+        print("    Instale manualmente em: https://go.dev/dl/")
+        return False
+
+    tarball = f"go{GO_VERSION}.linux-{go_arch}.tar.gz"
+    url = f"https://go.dev/dl/{tarball}"
+
+    passos = [
+        f"wget -q -O /tmp/{tarball} {url}",
+        f"sudo rm -rf /usr/local/go",
+        f"sudo tar -C /usr/local -xzf /tmp/{tarball}",
     ]
+    for passo in passos:
+        if not _rodar(passo):
+            print("[!] Falha ao instalar o Go automaticamente.")
+            print("    Tente manualmente: https://go.dev/dl/")
+            return False
+
+    if GO_ROOT_BIN not in os.environ.get('PATH', ''):
+        os.environ['PATH'] = f"{os.environ.get('PATH', '')}:{GO_ROOT_BIN}"
+
+    # Persiste no PATH do usuário para próximas sessões de shell
+    bashrc = os.path.join(HOME_DIR, ".bashrc")
+    linha_path = f'export PATH=$PATH:{GO_ROOT_BIN}:{GO_BIN_PATH}\n'
+    try:
+        conteudo_atual = ""
+        if os.path.exists(bashrc):
+            with open(bashrc, "r") as f:
+                conteudo_atual = f.read()
+        if linha_path.strip() not in conteudo_atual:
+            with open(bashrc, "a") as f:
+                f.write(f"\n# Adicionado por recon-ai.py\n{linha_path}")
+            print(f"[+] PATH do Go adicionado em {bashrc} (abra um novo terminal ou rode 'source ~/.bashrc').")
+    except Exception as e:
+        print(f"[!] Não foi possível atualizar {bashrc} automaticamente: {e}")
+
+    if shutil.which("go"):
+        print("[+] Go instalado com sucesso.")
+        return True
+    else:
+        print("[!] Go foi baixado, mas ainda não está no PATH desta sessão.")
+        print(f"    Rode: export PATH=$PATH:{GO_ROOT_BIN}:{GO_BIN_PATH}")
+        return False
+
+def instalar_dependencias():
+    go_ok = garantir_go_instalado()
+
+    comandos = [
+        # --break-system-packages evita o erro "externally-managed-environment" (PEP 668)
+        "pip install --break-system-packages google-generativeai openai arjun",
+    ]
+
+    if go_ok:
+        comandos += [
+            "go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest",
+            "go install -v github.com/tomnomnom/assetfinder@latest",
+            "go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest",
+            "go install -v github.com/projectdiscovery/katana/cmd/katana@latest",
+            "go install -v github.com/lc/gau/v2/cmd/gau@latest",
+            "go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest",
+            "go install -v github.com/hahwul/dalfox/v2@latest",
+        ]
+    else:
+        print("[!] Pulando instalação das ferramentas Go pois o Go não está disponível.")
+
+    comandos += [
+        "sudo apt update && sudo apt install -y ffuf",
+        "nuclei -update-templates",
+    ]
+
     for cmd in comandos:
         print(f"\n[*] Executando: {cmd}")
         subprocess.run(cmd, shell=True)
+
     print("\n[+] Instalacao concluida.")
+
+    faltantes = [f for f in ["subfinder", "assetfinder", "httpx", "katana", "gau", "nuclei", "dalfox", "arjun", "ffuf"] if not shutil.which(f)]
+    if faltantes:
+        print(f"[!] Ainda faltando no PATH: {', '.join(faltantes)}")
+        print("    Se acabou de instalar o Go agora, rode: source ~/.bashrc")
+        print("    E rode novamente: python3 recon-ai.py --setup")
+    else:
+        print("[+] Todas as ferramentas foram encontradas no PATH.")
 
 def salvar_api(provedor, chave):
     config = {}
@@ -67,7 +167,10 @@ def checar_dependencias():
     faltantes = [f for f in ferramentas if not shutil.which(f)]
     if faltantes:
         print(f"[!] Ferramentas faltando no PATH: {', '.join(faltantes)}")
-        print("[!] Rode 'python3 recon-ai.py --setup' primeiro.\n")
+        print("[!] Rode 'python3 recon-ai.py --setup' primeiro.")
+        if not shutil.which("go"):
+            print("[!] Detectado: o Go não está instalado, por isso as ferramentas Go acima não puderam ser compiladas.")
+        print()
         sys.exit(1)
 
 def executar_comando(comando, arquivo_log=None, monitorar_429=False, limite_429=5, pausa_waf=120):
@@ -126,7 +229,7 @@ def fase_2_web_probing(arquivo_subdominios, pasta):
     httpx_json = os.path.join(pasta, "httpx.json")
     urls_txt = os.path.join(pasta, "urls_vivas.txt")
     executar_comando([
-        "httpx", "-l", arquivo_subdominios, "-ports", "80,443,8080,8443", 
+        "httpx", "-l", arquivo_subdominios, "-ports", "80,443,8080,8443",
         "-threads", "30", "-rate-limit", "50", "-json", "-o", httpx_json, "-silent"
     ], monitorar_429=True)
     urls = []
@@ -183,7 +286,7 @@ def fase_5_scanning(arquivo_urls, arquivo_endpoints, pasta):
     dalfox_out = os.path.join(pasta, "dalfox.txt")
     executar_comando([
         "nuclei", "-list", arquivo_urls, "-rate-limit", "30", "-delay", "1",
-        "-random-agent", "-tags", "cve,misconfig,takeover,sqli", 
+        "-random-agent", "-tags", "cve,misconfig,takeover,sqli",
         "-severity", "medium,high,critical", "-json-export", nuclei_json, "-silent"
     ], monitorar_429=True)
     endpoints_params = os.path.join(pasta, "endpoints_params.txt")
@@ -196,7 +299,7 @@ def fase_5_scanning(arquivo_urls, arquivo_endpoints, pasta):
                     total_params += 1
     if total_params > 0:
         executar_comando([
-            "dalfox", "file", endpoints_params, "--silence", "--skip-bav", 
+            "dalfox", "file", endpoints_params, "--silence", "--skip-bav",
             "--worker", "5", "-o", dalfox_out
         ])
     return nuclei_json, dalfox_out
@@ -261,7 +364,7 @@ def main():
     if args.setup:
         instalar_dependencias()
         sys.exit(0)
-    
+
     if args.set_api:
         salvar_api(args.set_api[0], args.set_api[1])
         sys.exit(0)
